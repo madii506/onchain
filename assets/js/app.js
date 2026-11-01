@@ -136,6 +136,15 @@ function dump(cv, tokens) {                                                     
   const R = cv.vTok, d = tokens * 10 ** PUMP_DEC, k = cv.vSol * R;
   return { sol: Math.min((cv.vSol - k / (R + d)) / 1e9, cv.rSol / 1e9), chart: 1 - (R / (R + d)) ** 2 };
 }
+// where a holder would dump: the bonding curve while it bonds, the PumpSwap pool after (both read live from Solana)
+function amm(c) {
+  if (!c) return null;
+  if (c.curve && !c.complete && c.curve.vTok > 0) return { kind: 'curve', R: c.curve.vTok, px: curvePrice(c.curve), cap: c.curve.rSol / 1e9 };
+  const sol = c.solUsd || S.solUsd;
+  if (c.pool && c.pool.base > 0 && c.priceUsd > 0 && sol > 0) return { kind: 'pool', R: c.pool.base, px: c.priceUsd / sol, cap: Infinity };
+  return null;
+}
+function dumpA(a, tokens) { const f = a.R / (a.R + tokens * 10 ** PUMP_DEC); return { sol: Math.min(tokens * a.px * f, a.cap), chart: 1 - f * f }; }
 const priceSol = t => (t && t.curve && !t.complete ? curvePrice(t.curve) : t && t.priceUsd && t.solUsd ? t.priceUsd / t.solUsd : 0);
 async function token(mint) {
   const hit = S.tokens.get(mint);
@@ -205,7 +214,7 @@ async function hero() {
 // the hero card and the how-it-works swap cycle through live coins still on their curve
 const demo = { list: [], i: 0, timer: 0 };
 function feedDemo(j) {
-  const add = (j.coins || []).filter(c => c.curve && !c.complete && c.curve.vTok > 0).slice(0, 10);
+  const add = (j.coins || []).filter(c => amm(c)).slice(0, 10);
   if (!add.length) { if (!demo.list.length) paintImpact(null); return; }
   const had = demo.list.length; demo.list = add; S.solUsd = j.solUsd || S.solUsd; lab.feed(add);
   if (!had) { demo.i = 0; paintImpact(demo.list[0]); clearInterval(demo.timer); demo.timer = setInterval(() => { if (document.hidden) return; demo.i = (demo.i + 1) % demo.list.length; paintImpact(demo.list[demo.i]); }, 6000); }
@@ -213,10 +222,10 @@ function feedDemo(j) {
 function paintImpact(c) {
   const el = $('#impact'); if (!el) return;
   if (!c) { el.innerHTML = `<div class="ih"><b>Why off the chart</b></div><p class="muted mt0">A sell into a curve or a pool moves the price for everyone. A wallet-to-wallet swap never touches it.</p>`; return; }
-  const tokens = PUMP_SUPPLY * BAG, value = tokens * curvePrice(c.curve), d = dump(c.curve, tokens);
-  el.innerHTML = `<div class="ih">${img(c.image, c.symbol)}<b>$${esc(c.symbol)}</b><span>live curve · ${fmtUsd(c.mcapUsd)}</span></div>
+  const a = amm(c), tokens = PUMP_SUPPLY * BAG, value = tokens * a.px, d = dumpA(a, tokens);
+  el.innerHTML = `<div class="ih">${img(c.image, c.symbol)}<b>$${esc(c.symbol)}</b><span>live ${a.kind} · ${fmtUsd(c.mcapUsd)}</span></div>
     <div class="rows"><span>A 3% bag at market</span><b>${fmtSol(value)}</b>
-      <span>Dumped into the curve</span><b><em class="down">${fmtPct(-d.chart)}</em> · ${fmtSol(d.sol)}</b>
+      <span>Dumped into the ${a.kind}</span><b><em class="down">${fmtPct(-d.chart)}</em> · ${fmtSol(d.sol)}</b>
       <span>Swapped wallet to wallet</span><b><em class="up">0.00%</em> · your price</b></div><div class="bar"><i></i></div>`;
   const sol = $('#sw-sol'), tok = $('#sw-tok');
   if (sol) sol.textContent = fmtSol(value);
@@ -257,17 +266,17 @@ async function loadMarket(tab = M.tab, quiet = false) {
   } finally { M.busy[tab] = false; }
 }
 function coinCard(c) {
-  const cv = c.curve && !c.complete && c.curve.vTok > 0 ? c.curve : null;
-  const prog = cv ? curveProgress(cv) : c.complete ? 1 : 0, d = cv ? dump(cv, PUMP_SUPPLY * BAG) : null;
+  const cv = c.curve && !c.complete && c.curve.vTok > 0 ? c.curve : null, a = amm(c);
+  const prog = cv ? curveProgress(cv) : c.complete ? 1 : 0, d = a ? dumpA(a, PUMP_SUPPLY * BAG) : null;
   const ch = c.change1h != null && isFinite(c.change1h) ? c.change1h / 100 : null;
   return `<article class="coin" data-mint="${esc(c.mint)}" tabindex="0">${ch != null ? `<span class="chg ${ch >= 0 ? 'up' : 'down'}">${fmtPct(ch)} 1h</span>` : ''}
     <div class="ch">${img(c.image, c.symbol)}<div class="nm"><b>${esc(c.name || c.symbol || 'Unknown')}</b><span>$${esc(c.symbol || '???')}${c.created ? ' · ' + ago(c.created) : ''}</span></div></div>
-    <div class="kv"><div><span>Market cap</span><b>${fmtUsd(c.mcapUsd)}</b></div><div><span>${cv ? 'Dump a 3% bag' : 'Curve'}</span><b class="${cv ? 'down' : ''}">${cv ? fmtPct(-d.chart) : c.complete ? 'Graduated' : '—'}</b></div></div>
+    <div class="kv"><div><span>Market cap</span><b>${fmtUsd(c.mcapUsd)}</b></div><div><span>${a ? 'Dump a 3% bag' : 'Curve'}</span><b class="${a ? 'down' : ''}">${a ? fmtPct(-d.chart) : c.complete ? 'Graduated' : '—'}</b></div></div>
     <div class="pg"><div class="prog"><i style="width:${(prog * 100).toFixed(1)}%"></i></div><span>${cv ? 'bonding ' + Math.floor(prog * 100) + '%' : c.complete ? 'on PumpSwap' : ''}${c.holders ? ' · ' + kfmt(c.holders) + ' holders' : ''}</span></div>
     <div class="act"><button class="btn sm solid" type="button">Bid on a bag</button><a class="btn sm" href="https://pump.fun/coin/${esc(c.mint)}" target="_blank" rel="noopener" data-ext>pump.fun ↗</a></div></article>`;
 }
 const kfmt = n => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n));
-const impactOf = c => (c.curve && !c.complete ? dump(c.curve, PUMP_SUPPLY * BAG).chart : -1);
+const impactOf = c => { const a = amm(c); return a ? dumpA(a, PUMP_SUPPLY * BAG).chart : -1; };
 function sorted(list) {
   const l = list.slice();
   if (M.sort === 'mcap') l.sort((a, b) => b.mcapUsd - a.mcapUsd);
@@ -285,8 +294,8 @@ function paintCoins(j, quiet) {
 // the band under the hero: live coins and what a 3% dump would do to each chart
 function paintTicker(j) {
   const list = (j.coins || []).slice(0, 24); if (!list.length) return;
-  const one = c => { const cv = c.curve && !c.complete && c.curve.vTok > 0 ? c.curve : null;
-    return `<span data-mint="${esc(c.mint)}">${img(c.image, c.symbol)}$${esc(c.symbol)} <b>${fmtUsd(c.mcapUsd)}</b>${cv ? ` <em class="down">${fmtPct(-dump(cv, PUMP_SUPPLY * BAG).chart)}</em> dump 3%` : c.complete ? ' graduated' : ''}</span>`; };
+  const one = c => { const a = amm(c);
+    return `<span data-mint="${esc(c.mint)}">${img(c.image, c.symbol)}$${esc(c.symbol)} <b>${fmtUsd(c.mcapUsd)}</b>${a ? ` <em class="down">${fmtPct(-dumpA(a, PUMP_SUPPLY * BAG).chart)}</em> dump 3%` : ''}</span>`; };
   const html = list.map(one).join('');
   $('#ticker').innerHTML = html + html;                // twice, so the loop is seamless
 }
@@ -391,7 +400,7 @@ async function openOffer(t, seller, has) {
     const rows = [];
     if (px && a) rows.push(['Market value', `${fmtSol(mv)}${S.solUsd ? ' · ' + fmtUsd(mv * S.solUsd) : ''}`]);
     if (px && a && s) rows.push(['Your price vs market', `<em class="${s >= mv ? 'up' : 'down'}">${fmtPct(s / mv - 1)}</em>`]);
-    if (t.curve && a) { const d = dump(t.curve, a); rows.push(['If they dumped it instead', `${fmtSol(d.sol)} · chart <em class="down">${fmtPct(-d.chart)}</em>`]); }
+    const am = amm(t); if (am && a) { const d = dumpA(am, a); rows.push([`If they dumped it into the ${am.kind}`, `${fmtSol(d.sol)} · chart <em class="down">${fmtPct(-d.chart)}</em>`]); }
     rows.push(['Refundable deposit', `${fmtSol((S.config.nonceRent || 1447680) / 1e9)} · back when the offer ends`]);
     rows.push(['Network fee', '≈ ◎ 0.00002'], ['ONCHAIN fee', '0']);
     calc.innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
@@ -629,7 +638,7 @@ setInterval(() => { if (!document.hidden) stats.load(); }, 30000);
 const lab = {
   coins: [], c: null, pct: 3, prog: 1, raf: 0, played: false,
   feed(list) {
-    const add = list.filter(c => c.curve).slice(0, 6); if (!add.length) return;
+    const add = list.filter(c => amm(c)).slice(0, 6); if (!add.length) return;
     const keep = this.c && add.find(x => x.mint === this.c.mint);
     this.coins = add; this.c = keep || add[0]; this.pick(); this.draw();
   },
@@ -637,7 +646,7 @@ const lab = {
     $('#lab-pick').innerHTML = this.coins.map(c => `<button type="button" data-m="${esc(c.mint)}" class="${c === this.c ? 'on' : ''}">${img(c.image, c.symbol)}$${esc(c.symbol)}</button>`).join('');
   },
   series(n = 72) {
-    const R = this.c.curve.vTok, D = this.pct / 100 * PUMP_SUPPLY * 10 ** PUMP_DEC, ys = [];
+    const R = amm(this.c).R, D = this.pct / 100 * PUMP_SUPPLY * 10 ** PUMP_DEC, ys = [];
     for (let i = 0; i <= n; i++) ys.push((R / (R + D * i / n)) ** 2);           // price relative to now as the bag sells
     return ys;
   },
@@ -667,7 +676,8 @@ const lab = {
     if (!this.c) return;
     const r = $('#lab-r'); r.style.setProperty('--p', ((this.pct - .1) / 9.9 * 100).toFixed(1) + '%');
     $('#lab-pct').textContent = this.pct.toFixed(1) + '% of supply';
-    const ys = this.series(), p = this.prog, tokens = this.pct / 100 * PUMP_SUPPLY, mv = tokens * curvePrice(this.c.curve), d = dump(this.c.curve, tokens * clamp(p));
+    const a = amm(this.c), ys = this.series(), p = this.prog, tokens = this.pct / 100 * PUMP_SUPPLY, mv = tokens * a.px, d = dumpA(a, tokens * clamp(p));
+    $('#lab-al').textContent = a.kind === 'curve' ? 'Sold into the curve' : 'Sold into the pool';
     this.plot($('#lab-ca'), ys, p, true); this.plot($('#lab-cb'), ys.map(() => 1), p, false);
     $('#lab-a').textContent = fmtPct(-d.chart);
     $('#lab-af').innerHTML = `Holder gets <b>${fmtSol(d.sol)}</b> for ${fmtNum(tokens * clamp(p))} $${esc(this.c.symbol)}${p >= 1 ? ` · <span class="down">${fmtSol(mv - d.sol)}</span> lost to slippage` : ''}`;
