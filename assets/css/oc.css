@@ -427,3 +427,12 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 h1.wm{margin:0 0 26px;font:800 clamp(72px,11.5vw,176px)/.86 var(--sans);letter-spacing:-.06em}
 .logo{letter-spacing:.01em;font-size:17px}
 #intro{cursor:pointer}
+h1.wm span{display:inline;color:inherit;-webkit-text-stroke:0}
+h1.wm .fk{text-shadow:0 0 22px rgba(255,255,255,.22),0 0 2px rgba(255,255,255,.5);animation:flick 7.3s linear infinite}
+h1.wm .fk2{animation:flick2 4.1s linear infinite}
+@keyframes flick{0%,41%,43.5%,46%,79%,80.6%,100%{opacity:1;text-shadow:0 0 22px rgba(255,255,255,.22),0 0 2px rgba(255,255,255,.5)}
+  42%,44.6%{opacity:.35;text-shadow:none}43%{opacity:.85}45.4%{opacity:.6;text-shadow:none}79.8%{opacity:.5;text-shadow:none}}
+@keyframes flick2{0%,17%,19.5%,61%,63%,64.5%,100%{opacity:1;text-shadow:0 0 22px rgba(255,255,255,.22),0 0 2px rgba(255,255,255,.5)}
+  18%,62%{opacity:.12;text-shadow:none}18.8%{opacity:.7}63.6%{opacity:.25;text-shadow:none}}
+@media (prefers-reduced-motion:reduce){h1.wm .fk{animation:none}}
+h1.wm{margin-left:-.032em}
