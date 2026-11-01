@@ -69,7 +69,10 @@ async function copy(text, label = 'Copied') {
 document.addEventListener('click', e => { const c = e.target.closest('[data-copy]'); if (c) { e.preventDefault(); e.stopPropagation(); copy(c.dataset.copy, c.dataset.copied || 'Copied'); } });
 const PH = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#0d0d0d"/><rect x="8.5" y="19.5" width="17" height="9" rx="4.5" fill="none" stroke="#5a5a55" stroke-width="2"/><rect x="22.5" y="19.5" width="17" height="9" rx="4.5" fill="none" stroke="#5a5a55" stroke-width="2"/></svg>');
 document.addEventListener('error', e => { const i = e.target; if (i && i.tagName === 'IMG' && i.getAttribute('src') !== PH) i.setAttribute('src', PH); }, true);
-const img = (src, alt = '') => `<img src="${esc(src || PH)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+// ipfs.io refuses most browsers now; pump.fun's own pinning gateway serves the same files fast
+const IPFS = /^https?:\/\/(?:ipfs\.io|cf-ipfs\.com|cloudflare-ipfs\.com|gateway\.pinata\.cloud|dweb\.link|nftstorage\.link)\/ipfs\/(.+)$/;
+const fixImg = u => { const m = String(u || '').match(IPFS); return m ? 'https://pump.mypinata.cloud/ipfs/' + m[1] : u; };
+const img = (src, alt = '') => `<img src="${esc(fixImg(src) || PH)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
 
 // ---------------------------------------------------------------- layers (dialogs that can stack)
 const layers = [];
