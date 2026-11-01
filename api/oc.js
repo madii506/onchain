@@ -4,7 +4,6 @@ const crypto = require('crypto');
 const L = require('./_lib');
 const C = require('./_sol');
 
-const PF = 'https://frontend-api-v3.pump.fun';
 const JUP = 'https://lite-api.jup.ag';
 const FEE_BPS = 0;                                     // ONCHAIN takes nothing
 
@@ -17,24 +16,26 @@ async function solUsd() {
     return Number(v);
   }).catch(() => 0);
 }
-const pfCoin = c => ({
-  mint: c.mint, name: String(c.name || '').slice(0, 40), symbol: String(c.symbol || '').replace(/^\$+/, '').slice(0, 16),
-  image: c.image_uri || '', mcapUsd: Number(c.usd_market_cap || c.market_cap_usd || 0), created: Number(c.created_timestamp || 0),
-  lastTrade: Number(c.last_trade_timestamp || 0), complete: !!c.complete, live: !!c.is_currently_live, ath: Number(c.ath_market_cap || 0),
-  replies: Number(c.reply_count || 0), program: c.token_program || null,
+// pump.fun's own API refuses server requests (Cloudflare), so the live lists come from Jupiter's token feeds,
+// filtered to coins launched on pump.fun: trending in the last 5 minutes, highest organic score, newest.
+const LISTS = { live: 'toptrending/5m?limit=100', active: 'toporganicscore/5m?limit=100', new: 'recent' };
+const isPump = t => t && t.id && (t.launchpad === 'pump.fun' || /pump$/.test(t.id));
+const jupCoin = t => ({
+  mint: t.id, name: String(t.name || '').slice(0, 40), symbol: String(t.symbol || '').replace(/^\$+/, '').slice(0, 16), image: t.icon || '',
+  mcapUsd: Number(t.mcap || t.fdv || 0), priceUsd: Number(t.usdPrice || 0), liquidityUsd: Number(t.liquidity || 0), holders: Number(t.holderCount || 0),
+  created: Date.parse(t.createdAt || (t.firstPool && t.firstPool.createdAt) || '') || 0, complete: !!t.graduatedPool,
+  change1h: t.stats1h && t.stats1h.priceChange != null ? Number(t.stats1h.priceChange) : null,
+  vol1h: t.stats1h ? Number(t.stats1h.buyVolume || 0) + Number(t.stats1h.sellVolume || 0) : 0, organic: Number(t.organicScore || 0),
 });
 async function pumpList(kind) {
-  return L.cached('pf:' + kind, 25000, async () => {
-    const path = kind === 'live' ? '/coins/currently-live?offset=0&limit=60&sort=market_cap&order=DESC&includeNsfw=false'
-      : kind === 'new' ? '/coins?offset=0&limit=60&sort=created_timestamp&order=DESC&includeNsfw=false'
-      : '/coins?offset=0&limit=60&sort=last_trade_timestamp&order=DESC&includeNsfw=false';
-    const r = await L.getJson(PF + path, {}, 7000);
-    const arr = Array.isArray(r.json) ? r.json : (r.json && r.json.coins) || [];
-    if (!r.ok || !arr.length) throw new Error('pump.fun ' + r.status);
-    return arr.filter(c => c && c.mint && !c.nsfw && !c.is_banned).map(pfCoin);
+  return L.cached('jl:' + kind, 20000, async () => {
+    const r = await L.getJson(`${JUP}/tokens/v2/${LISTS[kind]}`, {}, 8000);
+    const arr = Array.isArray(r.json) ? r.json : [];
+    if (!r.ok || !arr.length) throw new Error('jupiter ' + r.status);
+    return arr.filter(isPump).map(jupCoin);
   });
 }
-// a fallback that does not need pump.fun: the newest token profiles on DexScreener whose mint is a pump.fun one
+// a fallback: the newest DexScreener token profiles whose mint is a pump.fun one
 async function dexPump() {
   return L.cached('dexpump', 60000, async () => {
     const prof = await L.getJson('https://api.dexscreener.com/token-profiles/latest/v1');
@@ -44,43 +45,49 @@ async function dexPump() {
     const best = new Map();
     for (const p of t.json || []) { const m = p.baseToken && p.baseToken.address; if (!m || !mints.includes(m)) continue; const cur = best.get(m); if (!cur || (p.liquidity && p.liquidity.usd || 0) > (cur.liquidity && cur.liquidity.usd || 0)) best.set(m, p); }
     return [...best.values()].map(p => ({ mint: p.baseToken.address, name: p.baseToken.name, symbol: p.baseToken.symbol, image: (p.info && p.info.imageUrl) || '',
-      mcapUsd: Number(p.marketCap || p.fdv || 0), created: Number(p.pairCreatedAt || 0), lastTrade: 0, complete: p.dexId !== 'pumpfun', live: false, ath: 0, replies: 0 }));
+      mcapUsd: Number(p.marketCap || p.fdv || 0), priceUsd: Number(p.priceUsd || 0), liquidityUsd: Number(p.liquidity && p.liquidity.usd || 0), holders: 0,
+      created: Number(p.pairCreatedAt || 0), complete: p.dexId !== 'pumpfun', change1h: p.priceChange && p.priceChange.h1 != null ? Number(p.priceChange.h1) : null, vol1h: Number(p.volume && p.volume.h1 || 0), organic: 0 }));
   });
 }
+// a curve is only used for the impact maths when it is a plain SOL curve that agrees with the market price
+const K_STD = 30e9 * 1073e12;
+function sane(cv, mcapUsd, sol) {
+  if (!cv || cv.complete || !(cv.vTok > 0) || !(cv.vSol > 0)) return false;
+  if (Math.abs(cv.vSol * cv.vTok / K_STD - 1) < .03) return true;
+  if (!mcapUsd || !sol) return false;
+  const implied = (cv.vSol / 1e9) / (cv.vTok / 1e6) * 1e9 * sol;
+  return implied / mcapUsd > .65 && implied / mcapUsd < 1.5;
+}
 async function coins(tab) {
-  let list = [], src = 'pump.fun';
+  let list = [], src = 'jupiter';
   try { list = await pumpList(tab); } catch { try { list = await dexPump(); src = 'dexscreener'; } catch { list = []; } }
-  // live price-impact maths for the first coins: bonding-curve reserves straight from the chain
+  // live price-impact maths: bonding-curve reserves read straight from the chain
   const onCurve = list.filter(c => !c.complete).slice(0, 40).map(c => c.mint);
-  const cv = onCurve.length ? await C.curves(onCurve).catch(() => ({})) : {};
-  const sol = await solUsd();
-  return { src, solUsd: sol, coins: list.map(c => ({ ...c, curve: cv[c.mint] || null })) };
+  const [cv, sol] = await Promise.all([onCurve.length ? C.curves(onCurve).catch(() => ({})) : {}, solUsd()]);
+  return { src, solUsd: sol, coins: list.map(c => { const k = cv[c.mint]; const ok = sane(k, c.mcapUsd, sol); return { ...c, complete: c.complete || !!(k && k.complete), curve: ok ? k : null }; }) };
 }
 async function jupTokens(mints) {
   const out = {};
   for (let i = 0; i < mints.length; i += 50) {
     const part = mints.slice(i, i + 50);
     const r = await L.getJson(`${JUP}/tokens/v2/search?query=${part.join(',')}`).catch(() => ({ json: [] }));
-    for (const t of Array.isArray(r.json) ? r.json : []) if (t && t.id) out[t.id] = { name: t.name, symbol: t.symbol, image: t.icon || '', priceUsd: Number(t.usdPrice || 0), mcapUsd: Number(t.mcap || t.fdv || 0), liquidityUsd: Number(t.liquidity || 0), decimals: t.decimals };
+    for (const t of Array.isArray(r.json) ? r.json : []) if (t && t.id) out[t.id] = { name: t.name, symbol: t.symbol, image: t.icon || '', priceUsd: Number(t.usdPrice || 0), mcapUsd: Number(t.mcap || t.fdv || 0), liquidityUsd: Number(t.liquidity || 0), decimals: t.decimals, launchpad: t.launchpad || null, graduated: !!t.graduatedPool, holders: Number(t.holderCount || 0) };
   }
   return out;
 }
 async function tokenInfo(mint) {
   return L.cached('tok:' + mint, 20000, async () => {
-    const [info, jup, pf] = await Promise.all([
-      C.mintInfo(mint),
-      jupTokens([mint]).then(o => o[mint] || null).catch(() => null),
-      /pump$/.test(mint) ? L.getJson(`${PF}/coins/${mint}`, {}, 6000).then(r => (r.ok && r.json && r.json.mint ? pfCoin(r.json) : null)).catch(() => null) : null,
-    ]);
-    const cv = pf && !pf.complete ? (await C.curves([mint]).catch(() => ({})))[mint] || null : null;
-    const sol = await solUsd();
+    const [info, jup, sol] = await Promise.all([C.mintInfo(mint), jupTokens([mint]).then(o => o[mint] || null).catch(() => null), solUsd()]);
+    const pump = !!(jup && jup.launchpad === 'pump.fun') || /pump$/.test(mint);
+    const raw = pump && !(jup && jup.graduated) ? (await C.curves([mint]).catch(() => ({})))[mint] || null : null;
+    const cv = sane(raw, jup && jup.mcapUsd, sol) ? raw : null;
     let priceUsd = jup && jup.priceUsd || 0;
     if (!priceUsd && cv && sol) priceUsd = (cv.vSol / 1e9) / (cv.vTok / 10 ** info.decimals) * sol;
     return {
       mint, decimals: info.decimals, program: info.program, supply: Number(info.supply) / 10 ** info.decimals, hook: info.hook,
-      name: (pf && pf.name) || (jup && jup.name) || 'Unknown token', symbol: (pf && pf.symbol) || (jup && jup.symbol) || '???',
-      image: (pf && pf.image) || (jup && jup.image) || '', priceUsd, mcapUsd: (pf && pf.mcapUsd) || (jup && jup.mcapUsd) || 0,
-      liquidityUsd: (jup && jup.liquidityUsd) || 0, complete: pf ? pf.complete : null, curve: cv, pump: !!pf, solUsd: sol,
+      name: (jup && jup.name) || 'Unknown token', symbol: (jup && jup.symbol) || '???', image: (jup && jup.image) || '', priceUsd,
+      mcapUsd: (jup && jup.mcapUsd) || (cv && sol ? (cv.vSol / 1e9) / (cv.vTok / 1e6) * 1e9 * sol : 0), liquidityUsd: (jup && jup.liquidityUsd) || 0,
+      holders: (jup && jup.holders) || 0, complete: pump ? !!((jup && jup.graduated) || (raw && raw.complete)) : null, curve: cv, pump, solUsd: sol,
     };
   });
 }
