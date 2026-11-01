@@ -424,3 +424,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
 .coin .ch{padding-right:70px}
 .nav a{white-space:nowrap}
 @media (max-width:980px){.top{background:rgba(0,0,0,.97)}}
+h1.wm{margin:0 0 26px;font:800 clamp(72px,11.5vw,176px)/.86 var(--sans);letter-spacing:-.06em}
+.logo{letter-spacing:.01em;font-size:17px}
+#intro{cursor:pointer}
