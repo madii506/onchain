@@ -1,5 +1,6 @@
-// The intro, about 4 s, once per session: the ASCII field wakes up, a pen draws the chain, its faces fill in,
-// one ring of light, then the name. Skippable. Never shown with reduced motion or when a shared link is opened.
+// The intro, about 4 s, once per session and without a word on screen: the ASCII field wakes up, a pen draws the
+// chain, its faces fill in, one ring of light. A click, a tap or Esc skips it. Never shown with reduced motion or
+// when a shared link is opened.
 const KEY = 'oc:intro';
 
 export function wantIntro() {
@@ -19,8 +20,9 @@ const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 export async function playIntro() {
   const el = document.getElementById('intro'); if (!el) return;
   try { sessionStorage.setItem(KEY, '1'); } catch {}
-  el.insertAdjacentHTML('beforeend', '<canvas aria-hidden="true"></canvas><div class="ring" aria-hidden="true"></div><div class="word">ONCHAIN</div><div class="tag2">Off the chart. On chain.</div><button class="skip" type="button">Skip</button>');
-  const cv = el.querySelector('canvas'), ring = el.querySelector('.ring'), word = el.querySelector('.word'), tag = el.querySelector('.tag2'), skip = el.querySelector('.skip');
+  el.insertAdjacentHTML('beforeend', '<canvas aria-hidden="true"></canvas><div class="ring" aria-hidden="true"></div>');
+  el.setAttribute('aria-label', 'Intro. Click to skip.');
+  const cv = el.querySelector('canvas'), ring = el.querySelector('.ring');
   let ch;
   try {
     const mod = await Promise.race([import('./chain3d.js?v=3'), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 3500))]);
@@ -28,21 +30,15 @@ export async function playIntro() {
   } catch { return; }                                  // no WebGL or a slow line: straight to the site
 
   return new Promise(resolve => {
-    let done = false, raf = 0, z = 12, t0 = 0, filled = false, worded = false, tagged = false;
+    let done = false, raf = 0, z = 12, t0 = 0, filled = false;
     const g = ch.group;
-    const place = () => {
-      ch.resize(); z = ch.fit(4.15, 1.2, innerWidth < 700 ? .74 : .42);
-      // the name sits under the drawn chain, whatever the screen
-      const vh = 2 * z * Math.tan(12 * Math.PI / 180), half = .62 * innerHeight / vh;
-      word.style.top = Math.round(innerHeight / 2 + half + 34) + 'px';
-      tag.style.top = Math.round(innerHeight / 2 + half + 34 + 56) + 'px';
-    };
+    const place = () => { ch.resize(); z = ch.fit(4.15, 1.2, innerWidth < 700 ? .74 : .42); };
     const finish = () => {
       if (done) return; done = true;
       el.classList.add('out'); resolve();
       setTimeout(() => { cancelAnimationFrame(raf); try { ch.dispose(); } catch {} el.remove(); }, 900);
     };
-    skip.addEventListener('click', finish);
+    el.addEventListener('pointerdown', finish);
     addEventListener('keydown', e => { if (e.key === 'Escape') finish(); });
     addEventListener('resize', place);
     place();
@@ -56,10 +52,8 @@ export async function playIntro() {
       g.rotation.z = -.06;
       ch.cam.position.z = z * (1.1 - .1 * ease(clamp(t / 3.8)));
       if (!filled && t > 2.3) { filled = true; ch.setFill(true); ring.classList.add('go'); }
-      if (!worded && t > 2.45) { worded = true; word.classList.add('in'); }
-      if (!tagged && t > 2.8) { tagged = true; tag.classList.add('in'); }
       ch.render();
-      if (t > 3.95) finish();
+      if (t > 3.6) finish();
     }
     raf = requestAnimationFrame(frame);
   });

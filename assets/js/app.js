@@ -2,7 +2,7 @@
 // comes from the API (pump.fun, Jupiter and the Solana chain); nothing here is simulated.
 import { startAscii } from './ascii.js?v=3';
 import * as W from './wallet.js?v=3';
-import { wantIntro, playIntro, dropIntro } from './intro.js?v=3';
+import { wantIntro, playIntro, dropIntro } from './intro.js?v=4';
 
 // ---------------------------------------------------------------- helpers
 const $ = (s, r = document) => r.querySelector(s);
@@ -105,7 +105,7 @@ function connectModal() {
     const list = ws.length ? ws.map((w, i) => `<button type="button" data-i="${i}"><img src="${esc(w.icon)}" alt="">${esc(w.name)}</button>`).join('')
       : W.KNOWN.map(k => `<a href="${k.url}" target="_blank" rel="noopener">${esc(k.name)}<span class="tag">install</span></a>`).join('') +
         `<a href="https://phantom.app/ul/browse/${here}?ref=${ref}">Open this page in Phantom<span class="tag">phone</span></a><a href="https://solflare.com/ul/v1/browse/${here}?ref=${ref}">Open this page in Solflare<span class="tag">phone</span></a>`;
-    const L = openLayer(`<h3>Connect a wallet</h3><p class="sub">${ws.length ? 'Your wallet shows every transaction before you sign it. ONCHAIN never sees your keys.' : 'No Solana wallet in this browser yet. Install one, or open this page inside your wallet app.'}</p><div class="wlist">${list}</div><p class="err mt" hidden></p>`, { onClose: () => resolve(W.current()) });
+    const L = openLayer(`<h3>Connect a wallet</h3><p class="sub">${ws.length ? 'Your wallet shows every transaction before you sign it. onchain never sees your keys.' : 'No Solana wallet in this browser yet. Install one, or open this page inside your wallet app.'}</p><div class="wlist">${list}</div><p class="err mt" hidden></p>`, { onClose: () => resolve(W.current()) });
     $$('[data-i]', L.dlg).forEach(b => b.addEventListener('click', async () => {
       b.disabled = true;
       try { const c = await W.connect(ws[+b.dataset.i]); L.close(true); toast(`Connected ${esc(short(c.address))}`, 'ok', 2200); }
@@ -338,11 +338,11 @@ function head(t, extra = '') {
   return `<div class="ohead">${img(t.image, t.symbol)}<div class="oh"><b>${esc(t.name || 'Token')}</b><span>$${esc(t.symbol || '???')} · <button class="cp" type="button" data-copy="${esc(t.mint)}" data-copied="Token address copied">${esc(short(t.mint))}</button></span></div>
     <div class="lk">${extra}${pf ? `<a class="btn xs" href="https://pump.fun/coin/${esc(t.mint)}" target="_blank" rel="noopener">pump.fun ↗</a>` : ''}<a class="btn xs" href="${solscan('token', esc(t.mint))}" target="_blank" rel="noopener">Solscan ↗</a></div></div>`;
 }
-const TAG = { curve: 'bonding curve', pool: 'PumpSwap pool', program: 'program' };
+const TAG = { curve: 'bonding curve', pool: 'pool', program: 'program', exchange: 'exchange' };
 async function openCoin(mint, pre) {
   history.replaceState(null, '', '#/c/' + mint);
   const L = openLayer(`<div class="c-head">${head(pre || { mint, symbol: '…', name: 'Loading…' })}</div><div class="kv4 c-kv"></div>
-    <h4 class="h4">Top holders · make any wallet an offer</h4><div class="c-hold"><div class="skel sm"></div></div>
+    <h4 class="h4 c-hh">Top holders · make any wallet an offer</h4><div class="c-hold"><div class="skel sm"></div></div>
     <form class="look tight c-form"><input placeholder="Or paste a holder's wallet address" spellcheck="false" autocomplete="off"><button class="btn solid" type="submit">Bid</button></form>`, { wide: true });
   let t;
   try { t = await token(mint); } catch (e) { $('.c-kv', L.dlg).outerHTML = `<p class="err">${esc(e.message)}</p>`; $('.c-hold', L.dlg).innerHTML = ''; return; }
@@ -350,15 +350,16 @@ async function openCoin(mint, pre) {
   const p = priceSol(t);
   $('.c-kv', L.dlg).innerHTML = `<div><span>Market cap</span><b>${t.mcapUsd ? fmtUsd(t.mcapUsd) : '—'}</b></div><div><span>Price</span><b>${t.priceUsd ? fmtUsd(t.priceUsd) : p ? fmtSol(p) : '—'}</b></div>
     <div><span>${t.curve ? 'Bonding' : 'Liquidity'}</span><b>${t.curve ? Math.floor(curveProgress(t.curve) * 100) + '%' : t.liquidityUsd ? fmtUsd(t.liquidityUsd) : '—'}</b></div>${t.holders ? `<div><span>Holders</span><b>${fmtNum(t.holders)}</b></div>` : `<div><span>Supply</span><b>${fmtNum(t.supply)}</b></div>`}`;
-  if (t.hook) $('.c-kv', L.dlg).insertAdjacentHTML('afterend', '<p class="err">This token runs a transfer hook. ONCHAIN cannot swap it yet.</p>');
+  if (t.hook) $('.c-kv', L.dlg).insertAdjacentHTML('afterend', '<p class="err">This token runs a transfer hook. onchain cannot swap it yet.</p>');
   $('.c-form', L.dlg).addEventListener('submit', e => { e.preventDefault(); const w = findAddr($('input', e.target).value); if (!w) return toast('Paste a Solana wallet address.', 'bad'); openOffer(t, w, null); });
   const box = $('.c-hold', L.dlg);
   try {
     const h = await api('holders', { mint });
     const me = W.current() && W.current().address;
     if (!h.rows.length) { box.innerHTML = '<div class="empty">No holders found.</div>'; return; }
+    if (h.count) $('.c-hh', L.dlg).textContent = `Top holders of ${fmtNum(h.count)} · make any wallet an offer`;
     box.innerHTML = `<div class="hold-list">${h.rows.map((r, i) => `<div class="h"><span class="n">${i + 1}</span>
-      <span class="a"><a href="${solscan('account', r.owner)}" target="_blank" rel="noopener">${esc(short(r.owner))}</a>${r.wallet ? (r.owner === me ? '<span class="tag">you</span>' : '') : `<span class="tag">${TAG[r.kind] || 'program'}</span>`}</span>
+      <span class="a"><a href="${solscan('account', r.owner)}" target="_blank" rel="noopener">${esc(short(r.owner))}</a>${r.wallet ? (r.owner === me ? '<span class="tag">you</span>' : '') : `<span class="tag">${esc(r.kind === 'curve' ? TAG.curve : r.label || TAG[r.kind] || 'program')}</span>`}</span>
       <span class="p">${fmtNum(r.ui)} · ${(r.pct * 100).toFixed(2)}%</span>
       ${r.wallet && r.owner !== me && !t.hook ? `<button class="btn xs solid" type="button" data-bid="${esc(r.owner)}" data-has="${r.ui}">Bid</button>` : '<span></span>'}</div>`).join('')}</div>`;
     box.addEventListener('click', e => { const b = e.target.closest('[data-bid]'); if (b) openOffer(t, b.dataset.bid, Number(b.dataset.has)); });
@@ -402,7 +403,7 @@ async function openOffer(t, seller, has) {
     if (px && a && s) rows.push(['Your price vs market', `<em class="${s >= mv ? 'up' : 'down'}">${fmtPct(s / mv - 1)}</em>`]);
     const am = amm(t); if (am && a) { const d = dumpA(am, a); rows.push([`If they dumped it into the ${am.kind}`, `${fmtSol(d.sol)} · chart <em class="down">${fmtPct(-d.chart)}</em>`]); }
     rows.push(['Refundable deposit', `${fmtSol((S.config.nonceRent || 1447680) / 1e9)} · back when the offer ends`]);
-    rows.push(['Network fee', '≈ ◎ 0.00002'], ['ONCHAIN fee', '0']);
+    rows.push(['Network fee', '≈ ◎ 0.00002'], ['onchain fee', '0']);
     calc.innerHTML = rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
   }
   amt.addEventListener('input', update); sol.addEventListener('input', update);
@@ -443,7 +444,7 @@ async function openOffer(t, seller, has) {
       const r = await api('create', null, { ...body, id: b.id, nonce: st.nonce, signed: W.b64(signed), note });
       step(4); L.busy = false; go.hidden = true;
       const url = `${location.origin}/#/o/${r.offer.id}`;
-      const text = `I made an offer on a $${t.symbol} bag, wallet to wallet. Off the chart. On chain.`;
+      const text = `I made an offer on a $${t.symbol} bag, wallet to wallet. The chart never sees it.`;
       q('.o-done').innerHTML = `<div class="ok">Your offer is live. The holder sees it on their desk when they connect. Send them the link.</div>
         <div class="link mt"><span>${esc(url)}</span><button class="btn xs" type="button" data-copy="${esc(url)}" data-copied="Offer link copied">Copy</button></div>
         <div class="share"><a class="btn sm" href="https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}" target="_blank" rel="noopener">Share on X</a><button class="btn sm" type="button" data-a="desk">Open my desk</button></div>`;
