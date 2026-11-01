@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" class="intro-on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ONCHAIN</title>
+<meta name="description" content="Trade any memecoin bag wallet to wallet. Make an offer, the holder signs, both sides swap in one transaction. Off the chart. On chain.">
+<meta name="theme-color" content="#000000">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ONCHAIN">
+<meta property="og:description" content="Off the chart. On chain. Make an offer on any memecoin bag; the holder signs; one transaction swaps both sides.">
+<meta property="og:image" content="/assets/img/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ONCHAIN">
+<meta name="twitter:description" content="Off the chart. On chain. Wallet-to-wallet trades for Solana memecoins.">
+<meta name="twitter:image" content="/assets/img/og.png">
+<link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/img/favicon-64.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32.png">
+<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
+<link rel="preload" href="/assets/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/jbm-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/oc.css?v=3">
+<noscript><style>#intro{display:none}html.intro-on .top,html.intro-on main{opacity:1}</style></noscript>
+</head>
+<body>
+<div id="intro"><div class="veil"></div></div>
+<canvas id="ascii" aria-hidden="true"></canvas>
+<header class="top">
+  <a class="logo" href="#top" aria-label="ONCHAIN home"><svg viewBox="5 19 54 26" width="34" height="16" aria-hidden="true"><g fill="none"><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><clipPath id="lc"><rect x="25" y="33" width="14" height="14"/></clipPath><g clip-path="url(#lc)"><rect x="27" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/></g></g></svg><span>ONCHAIN</span></a>
+  <nav class="nav" aria-label="Sections">
+    <a href="#market" data-s="market">Market</a><a href="#lookup" data-s="lookup">Lookup</a><a href="#desk" data-s="desk">Desk</a><a href="#tape" data-s="tape">Tape</a><a href="#how" data-s="how">How it works</a>
+  </nav>
+  <button class="wal" id="wal">Connect wallet</button>
+</header>
+
+<main id="top">
+  <section class="hero" id="hero">
+    <div class="hero-in">
+      <div class="hero-copy">
+        <p class="kick rv"><span class="dot"></span>Wallet to wallet · Solana</p>
+        <h1 class="rv"><span>Off the chart.</span><span>On chain.</span></h1>
+        <p class="lead rv">Make an offer on any memecoin bag. The holder signs, and both sides swap in one transaction. The pool never sees it, so the chart never moves.</p>
+        <div class="ctas rv"><a class="btn solid" href="#market">Make an offer</a><a class="btn line" href="#lookup">Look up a wallet</a></div>
+      </div>
+      <div class="hero-art">
+        <canvas id="hero-chain" aria-hidden="true"></canvas>
+        <div class="impact rv" id="impact" aria-live="polite"></div>
+      </div>
+    </div>
+    <a class="cue" href="#how" aria-label="Scroll"><span>scroll</span><i></i></a>
+  </section>
+  <div class="ticker" aria-hidden="true"><div class="tk" id="ticker"></div></div>
+
+  <section class="sec" id="how">
+    <div class="sec-h rv"><span class="kick">01 · How it works</span><h2>Two signatures. One transaction.</h2><p>No escrow, no middleman key, no pool. Your coins never leave your wallet until the moment they swap.</p></div>
+    <div class="how">
+      <div class="how-line" aria-hidden="true"><i id="how-fill"></i></div>
+      <ol class="steps">
+        <li class="step rv"><b>01</b><div><h3>Make an offer</h3><p>Pick any coin and any wallet's bag, then set your price in SOL. Your wallet signs your half of the swap in advance. The SOL stays with you.</p><code>advance nonce → your SOL → their wallet</code></div></li>
+        <li class="step rv"><b>02</b><div><h3>The holder signs</h3><p>They see it on their desk, or you send them the link. One signature accepts it. You can cancel at any moment before they do.</p><code>their tokens → your wallet</code></div></li>
+        <li class="step rv"><b>03</b><div><h3>One transaction swaps both</h3><p>Tokens go one way and SOL goes the other in a single Solana transaction. If either side is short, nothing moves.</p><code>all or nothing · 0.00% chart impact</code></div></li>
+      </ol>
+      <div class="swap rv" aria-hidden="true">
+        <div class="w w1"><span>buyer</span><b id="sw-sol">◎ SOL</b></div>
+        <div class="lanes"><i class="l1"></i><i class="l2"></i><em>1 tx</em></div>
+        <div class="w w2"><span>holder</span><b id="sw-tok">tokens</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="market">
+    <div class="sec-h rv"><span class="kick">02 · Live on pump.fun</span><h2>Pick a coin. Bid on a bag.</h2><p>Live pump.fun coins with their curve and the cost of dumping into it. Open any coin to see who holds it and make them an offer.</p></div>
+    <div class="mbar rv">
+      <div class="tabs" role="tablist"><button data-tab="live" class="on">Live now</button><button data-tab="active">Trading</button><button data-tab="new">New</button></div>
+      <label class="find"><span>⌕</span><input id="mint-in" placeholder="Paste any token address" spellcheck="false" autocomplete="off"></label>
+    </div>
+    <div class="grid" id="coins"></div>
+    <p class="src" id="coins-src"></p>
+  </section>
+
+  <section class="sec" id="lookup">
+    <div class="sec-h rv"><span class="kick">03 · Look up any wallet</span><h2>Every wallet is a shop.</h2><p>Paste a wallet and see every bag in it. Make an offer on the one you want.</p></div>
+    <form class="look rv" id="look-f"><input id="look-in" placeholder="Paste a Solana wallet address" spellcheck="false" autocomplete="off"><button class="btn solid" type="submit">Look up</button></form>
+    <div id="look-out"></div>
+  </section>
+
+  <section class="sec" id="desk">
+    <div class="sec-h rv"><span class="kick">04 · Your desk</span><h2>Offers in, offers out.</h2><p>Offers on your bags wait here for your signature. Your own offers stay open until they fill or you cancel them.</p></div>
+    <div id="desk-out" class="rv"></div>
+  </section>
+
+  <section class="sec" id="tape">
+    <div class="sec-h rv"><span class="kick">05 · The tape</span><h2>The chart never sees it. The tape does.</h2><p>Every offer, swap and cancel on ONCHAIN, as it happens.</p></div>
+    <div class="stats rv" id="stats"></div>
+    <div id="tape-out" class="rv"></div>
+  </section>
+
+  <section class="sec" id="faq">
+    <div class="sec-h rv"><span class="kick">06 · Questions</span><h2>How the swap stays safe</h2></div>
+    <div class="faq rv">
+      <details open><summary>Who holds my coins while an offer is open?</summary><p>You do. Your offer is a transaction your wallet signed in advance, waiting for the holder's signature. Your SOL and their tokens stay in each wallet until the swap. ONCHAIN holds no key that can move anything.</p></details>
+      <details><summary>What is the deposit slot?</summary><p>Each open offer rests on a small Solana "durable nonce" account. It lets your signed half stay valid for days instead of about a minute. It holds about 0.0015 SOL of rent, which goes back to your wallet when you cancel or reclaim it. Only your wallet controls it.</p></details>
+      <details><summary>How do I cancel?</summary><p>Click cancel on your desk. Your wallet closes the deposit slot, which makes your signed half invalid forever, and the rent returns to you.</p></details>
+      <details><summary>Why does it not move the chart?</summary><p>The tokens and SOL go straight from wallet to wallet in one transaction. Nothing is sold into the curve or the pool, so the price never sees it.</p></details>
+      <details><summary>What if the holder sold first, or I spent my SOL?</summary><p>Then the swap fails as a whole and nothing moves. Both transfers happen together or not at all.</p></details>
+      <details><summary>What does ONCHAIN charge?</summary><p>Nothing. You pay Solana's network fee (fractions of a cent) and the refundable deposit.</p></details>
+      <details><summary>Which coins work?</summary><p>Any SPL or Token-2022 coin on Solana, pump.fun or not. Coins with a transfer hook are not supported yet.</p></details>
+      <details><summary>How does the holder find my offer?</summary><p>It shows on their desk the next time they connect, and you get a link to send them. Anyone can check the offer on its page.</p></details>
+    </div>
+  </section>
+
+  <footer class="foot"><span>ONCHAIN</span><span class="muted">Off the chart. On chain.</span><span id="foot-links"></span></footer>
+</main>
+
+<div id="toasts" aria-live="polite"></div>
+<script type="module" src="/assets/js/app.js?v=3"></script>
+</body>
+</html>
