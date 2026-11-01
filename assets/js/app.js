@@ -141,8 +141,12 @@ function amm(c) {
   if (!c) return null;
   if (c.curve && !c.complete && c.curve.vTok > 0) return { kind: 'curve', R: c.curve.vTok, px: curvePrice(c.curve), cap: c.curve.rSol / 1e9 };
   const sol = c.solUsd || S.solUsd;
-  if (c.pool && c.pool.base > 0 && c.priceUsd > 0 && sol > 0) return { kind: 'pool', R: c.pool.base, px: c.priceUsd / sol, cap: Infinity };
-  return null;
+  if (c.complete === false || !(c.priceUsd > 0) || !(sol > 0)) return null;      // still bonding but no clean curve: no guess
+  // after graduation: the canonical PumpSwap pool read from the chain, or every pool's depth from Jupiter's
+  // liquidity figure, whichever is deeper (a dump routes through all of them)
+  const liqR = c.liquidityUsd > 0 ? c.liquidityUsd / 2 / c.priceUsd * 10 ** PUMP_DEC : 0, poolR = c.pool && c.pool.base > 0 ? c.pool.base : 0;
+  const R = Math.max(liqR, poolR);
+  return R > 0 ? { kind: 'pool', R, px: c.priceUsd / sol, cap: Infinity } : null;
 }
 function dumpA(a, tokens) { const f = a.R / (a.R + tokens * 10 ** PUMP_DEC); return { sol: Math.min(tokens * a.px * f, a.cap), chart: 1 - f * f }; }
 const priceSol = t => (t && t.curve && !t.complete ? curvePrice(t.curve) : t && t.priceUsd && t.solUsd ? t.priceUsd / t.solUsd : 0);
