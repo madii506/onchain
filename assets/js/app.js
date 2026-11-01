@@ -153,7 +153,7 @@ function onScroll() {
 addEventListener('scroll', onScroll, { passive: true }); onScroll();
 const navA = $$('.nav a');
 const spy = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) navA.forEach(a => a.classList.toggle('on', a.dataset.s === e.target.id)); }), { rootMargin: '-45% 0px -50% 0px' });
-['how', 'market', 'lookup', 'desk', 'tape', 'faq'].forEach(id => { const el = document.getElementById(id); if (el) spy.observe(el); });
+['how', 'lab', 'market', 'lookup', 'desk', 'tape', 'faq'].forEach(id => { const el = document.getElementById(id); if (el) spy.observe(el); });
 function scramble(el) {
   const final = el.textContent, chars = '.:-=+*%#', n = 16; let f = 0;
   const iv = setInterval(() => {
@@ -172,17 +172,23 @@ const io = new IntersectionObserver(es => es.forEach(e => {
 async function hero() {
   const cv = $('#hero-chain'); if (!cv) return;
   let ch; try { const m = await import('./chain3d.js?v=3'); ch = m.createChain(cv, { links: 3, line: 2.1, hatch: 1.05 }); } catch { return; }
-  const g = ch.group; let vis = true, raf = 0, px = 0, py = 0, tx = 0, ty = 0, spin = .4, lastY = scrollY, vel = 0;
+  const g = ch.group; let vis = true, raf = 0, px = 0, py = 0, tx = 0, ty = 0, spin = .4, lastY = scrollY, vel = 0, flick = 0, drag = null;
   const fit = () => { ch.resize(); ch.cam.position.z = ch.fit(4.25, 2.7, innerWidth < 980 ? .9 : .84); };
   fit(); addEventListener('resize', fit);
   addEventListener('pointermove', e => { tx = e.clientX / innerWidth * 2 - 1; ty = e.clientY / innerHeight * 2 - 1; }, { passive: true });
+  // grab it: drag sideways to wind the chain, tap it for a flick
+  cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, moved: 0 }; try { cv.setPointerCapture(e.pointerId); } catch {} cv.classList.add('grab'); });
+  cv.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x; drag.x = e.clientX; drag.moved += Math.abs(dx); spin += dx * .011; flick = dx * .006; });
+  const letGo = () => { if (drag && drag.moved < 5) flick = .32; drag = null; cv.classList.remove('grab'); };
+  cv.addEventListener('pointerup', letGo); cv.addEventListener('pointercancel', letGo);
   const t0 = performance.now();
   function frame(now) {
     raf = 0; if (!vis || document.hidden) return;
     raf = requestAnimationFrame(frame);
     const t = (now - t0) / 1000, y = scrollY;
     vel += ((y - lastY) - vel) * .12; lastY = y;
-    spin += (REDUCED ? 0 : .0032) + Math.min(.07, Math.abs(vel) * .0011);   // scrolling winds it faster
+    spin += (REDUCED ? 0 : .0032) + Math.min(.07, Math.abs(vel) * .0011) + flick;   // scrolling winds it faster
+    flick *= .95;
     px += (tx - px) * .05; py += (ty - py) * .05;
     g.rotation.x = spin; g.rotation.y = px * .3; g.rotation.z = -.42 + py * .1;
     const p = clamp(y / innerHeight);
@@ -201,7 +207,7 @@ const demo = { list: [], i: 0, timer: 0 };
 function feedDemo(j) {
   const add = (j.coins || []).filter(c => c.curve && !c.complete && c.curve.vTok > 0).slice(0, 10);
   if (!add.length) { if (!demo.list.length) paintImpact(null); return; }
-  const had = demo.list.length; demo.list = add; S.solUsd = j.solUsd || S.solUsd;
+  const had = demo.list.length; demo.list = add; S.solUsd = j.solUsd || S.solUsd; lab.feed(add);
   if (!had) { demo.i = 0; paintImpact(demo.list[0]); clearInterval(demo.timer); demo.timer = setInterval(() => { if (document.hidden) return; demo.i = (demo.i + 1) % demo.list.length; paintImpact(demo.list[demo.i]); }, 6000); }
 }
 function paintImpact(c) {
@@ -232,7 +238,7 @@ function howScroll() {
 }
 
 // ---------------------------------------------------------------- market
-const M = { tab: 'live', data: {}, busy: {} };
+const M = { tab: 'live', data: {}, busy: {}, sort: 'rank' };
 const near = sel => { const el = $(sel); if (!el) return false; const r = el.getBoundingClientRect(); return r.bottom > -innerHeight && r.top < innerHeight * 2; };
 async function loadMarket(tab = M.tab, quiet = false) {
   M.tab = tab;
@@ -253,15 +259,25 @@ async function loadMarket(tab = M.tab, quiet = false) {
 function coinCard(c) {
   const cv = c.curve && !c.complete && c.curve.vTok > 0 ? c.curve : null;
   const prog = cv ? curveProgress(cv) : c.complete ? 1 : 0, d = cv ? dump(cv, PUMP_SUPPLY * BAG) : null;
-  return `<article class="coin" data-mint="${esc(c.mint)}" tabindex="0">${c.live ? '<span class="live">LIVE</span>' : ''}
+  const ch = c.change1h != null && isFinite(c.change1h) ? c.change1h / 100 : null;
+  return `<article class="coin" data-mint="${esc(c.mint)}" tabindex="0">${ch != null ? `<span class="chg ${ch >= 0 ? 'up' : 'down'}">${fmtPct(ch)} 1h</span>` : ''}
     <div class="ch">${img(c.image, c.symbol)}<div class="nm"><b>${esc(c.name || c.symbol || 'Unknown')}</b><span>$${esc(c.symbol || '???')}${c.created ? ' · ' + ago(c.created) : ''}</span></div></div>
     <div class="kv"><div><span>Market cap</span><b>${fmtUsd(c.mcapUsd)}</b></div><div><span>${cv ? 'Dump a 3% bag' : 'Curve'}</span><b class="${cv ? 'down' : ''}">${cv ? fmtPct(-d.chart) : c.complete ? 'Graduated' : '—'}</b></div></div>
-    <div class="pg"><div class="prog"><i style="width:${(prog * 100).toFixed(1)}%"></i></div><span>${cv ? 'bonding ' + Math.floor(prog * 100) + '%' : c.complete ? 'on PumpSwap' : ''}</span></div>
+    <div class="pg"><div class="prog"><i style="width:${(prog * 100).toFixed(1)}%"></i></div><span>${cv ? 'bonding ' + Math.floor(prog * 100) + '%' : c.complete ? 'on PumpSwap' : ''}${c.holders ? ' · ' + kfmt(c.holders) + ' holders' : ''}</span></div>
     <div class="act"><button class="btn sm solid" type="button">Bid on a bag</button><a class="btn sm" href="https://pump.fun/coin/${esc(c.mint)}" target="_blank" rel="noopener" data-ext>pump.fun ↗</a></div></article>`;
 }
+const kfmt = n => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n));
+const impactOf = c => (c.curve && !c.complete ? dump(c.curve, PUMP_SUPPLY * BAG).chart : -1);
+function sorted(list) {
+  const l = list.slice();
+  if (M.sort === 'mcap') l.sort((a, b) => b.mcapUsd - a.mcapUsd);
+  else if (M.sort === 'impact') l.sort((a, b) => impactOf(b) - impactOf(a));
+  else if (M.sort === 'age') l.sort((a, b) => (b.created || 0) - (a.created || 0));
+  return l;
+}
 function paintCoins(j, quiet) {
-  const grid = $('#coins'), list = (j.coins || []).slice(0, 48);
-  $('#coins-src').textContent = list.length ? `${list.length} coins · from ${j.src === 'pump.fun' ? 'pump.fun' : 'DexScreener (pump.fun mints)'} · curves read live from Solana · refreshes every 30s` : '';
+  const grid = $('#coins'), list = sorted((j.coins || []).slice(0, 48));
+  $('#coins-src').textContent = list.length ? `${list.length} pump.fun coins · ${j.src === 'jupiter' ? 'ranked live by Jupiter' : 'newest DexScreener profiles'} · curves read straight from Solana · refreshes every 30s` : '';
   if (!list.length) { grid.innerHTML = '<div class="empty">No coins on this tab right now. Try another tab, or paste any token address above.</div>'; return; }
   grid.innerHTML = list.map(coinCard).join('');
   $$('.coin', grid).forEach((c, i) => (quiet || REDUCED ? c.classList.add('in') : setTimeout(() => c.classList.add('in'), 28 * i)));
@@ -283,6 +299,24 @@ $('#coins').addEventListener('click', e => {
 });
 $('#coins').addEventListener('keydown', e => { const card = e.target.closest('.coin'); if (card && e.key === 'Enter') openCoin(card.dataset.mint, coinBy(card.dataset.mint)); });
 $$('.tabs [data-tab]').forEach(b => b.addEventListener('click', () => loadMarket(b.dataset.tab)));
+$$('.sort [data-sort]').forEach(b => b.addEventListener('click', () => {
+  M.sort = b.dataset.sort; $$('.sort [data-sort]').forEach(x => x.classList.toggle('on', x === b));
+  if (M.data[M.tab]) paintCoins(M.data[M.tab]);
+}));
+// cards lean toward the pointer, with a soft light where it is
+$('#coins').addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || REDUCED) return;
+  const c = e.target.closest('.coin'); if (!c) return;
+  const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+  c.style.setProperty('--rx', ((.5 - y) * 6).toFixed(2) + 'deg'); c.style.setProperty('--ry', ((x - .5) * 8).toFixed(2) + 'deg');
+  c.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); c.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+});
+$('#coins').addEventListener('pointerout', e => { const c = e.target.closest('.coin'); if (c && !c.contains(e.relatedTarget)) { c.style.removeProperty('--rx'); c.style.removeProperty('--ry'); } });
+// "/" jumps to the token search from anywhere
+addEventListener('keydown', e => {
+  if (e.key !== '/' || layers.length || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return;
+  e.preventDefault(); $('#market').scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }); setTimeout(() => mintIn.focus({ preventScroll: true }), 450);
+});
 const mintIn = $('#mint-in');
 function goMint() { const a = findAddr(mintIn.value); if (!a) { if (mintIn.value.trim()) toast('Paste a token address or a pump.fun link.', 'bad'); return; } mintIn.blur(); openCoin(a, coinBy(a)); }
 mintIn.addEventListener('keydown', e => { if (e.key === 'Enter') goMint(); });
@@ -306,7 +340,7 @@ async function openCoin(mint, pre) {
   $('.c-head', L.dlg).innerHTML = head(t);
   const p = priceSol(t);
   $('.c-kv', L.dlg).innerHTML = `<div><span>Market cap</span><b>${t.mcapUsd ? fmtUsd(t.mcapUsd) : '—'}</b></div><div><span>Price</span><b>${t.priceUsd ? fmtUsd(t.priceUsd) : p ? fmtSol(p) : '—'}</b></div>
-    <div><span>${t.curve ? 'Bonding' : 'Liquidity'}</span><b>${t.curve ? Math.floor(curveProgress(t.curve) * 100) + '%' : t.liquidityUsd ? fmtUsd(t.liquidityUsd) : '—'}</b></div><div><span>Supply</span><b>${fmtNum(t.supply)}</b></div>`;
+    <div><span>${t.curve ? 'Bonding' : 'Liquidity'}</span><b>${t.curve ? Math.floor(curveProgress(t.curve) * 100) + '%' : t.liquidityUsd ? fmtUsd(t.liquidityUsd) : '—'}</b></div>${t.holders ? `<div><span>Holders</span><b>${fmtNum(t.holders)}</b></div>` : `<div><span>Supply</span><b>${fmtNum(t.supply)}</b></div>`}`;
   if (t.hook) $('.c-kv', L.dlg).insertAdjacentHTML('afterend', '<p class="err">This token runs a transfer hook. ONCHAIN cannot swap it yet.</p>');
   $('.c-form', L.dlg).addEventListener('submit', e => { e.preventDefault(); const w = findAddr($('input', e.target).value); if (!w) return toast('Paste a Solana wallet address.', 'bad'); openOffer(t, w, null); });
   const box = $('.c-hold', L.dlg);
@@ -497,7 +531,7 @@ const desk = {
   tab: 'in', data: null, seen: null,
   async refresh(quiet) {
     const out = $('#desk-out'), c = W.current();
-    if (!c) { this.data = null; this.seen = null; document.title = 'ONCHAIN'; out.innerHTML = `<div class="empty">Connect your wallet to see the offers on your bags and the offers you made.<div class="mt"><button class="btn solid" type="button" data-a="connect">Connect wallet</button></div></div>`; return; }
+    if (!c) { this.data = null; this.seen = null; document.title = 'onchain'; out.innerHTML = `<div class="empty">Connect your wallet to see the offers on your bags and the offers you made.<div class="mt"><button class="btn solid" type="button" data-a="connect">Connect wallet</button></div></div>`; return; }
     if (!quiet && !this.data) out.innerHTML = '<div class="skel"></div>';
     try {
       const j = await api('offers', { wallet: c.address });
@@ -507,7 +541,7 @@ const desk = {
   },
   notify(j) {
     const open = j.incoming.filter(o => o.status === 'open');
-    document.title = open.length ? `(${open.length}) ONCHAIN` : 'ONCHAIN';
+    document.title = open.length ? `(${open.length}) onchain` : 'onchain';
     const ids = new Set(open.map(o => o.id));
     if (this.seen) for (const o of open) if (!this.seen.has(o.id)) toast(`New offer: ${fmtSol(o.sol)} for ${fmtNum(o.amount)} of your $${esc(o.symbol || '')}. <a href="#/o/${esc(o.id)}">Open ↗</a>`, 'ok', 9000);
     this.seen = ids;
@@ -590,6 +624,74 @@ function countUp(el, to, f, ms = 1300) {
 }
 setInterval(() => { if (!document.hidden && near('#tape')) tape.load(); }, 8000);
 setInterval(() => { if (!document.hidden) stats.load(); }, 30000);
+
+// ---------------------------------------------------------------- the dump lab: sell a bag into a live curve vs wallet to wallet
+const lab = {
+  coins: [], c: null, pct: 3, prog: 1, raf: 0, played: false,
+  feed(list) {
+    const add = list.filter(c => c.curve).slice(0, 6); if (!add.length) return;
+    const keep = this.c && add.find(x => x.mint === this.c.mint);
+    this.coins = add; this.c = keep || add[0]; this.pick(); this.draw();
+  },
+  pick() {
+    $('#lab-pick').innerHTML = this.coins.map(c => `<button type="button" data-m="${esc(c.mint)}" class="${c === this.c ? 'on' : ''}">${img(c.image, c.symbol)}$${esc(c.symbol)}</button>`).join('');
+  },
+  series(n = 72) {
+    const R = this.c.curve.vTok, D = this.pct / 100 * PUMP_SUPPLY * 10 ** PUMP_DEC, ys = [];
+    for (let i = 0; i <= n; i++) ys.push((R / (R + D * i / n)) ** 2);           // price relative to now as the bag sells
+    return ys;
+  },
+  plot(cv, ys, prog, drop) {
+    const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const end = ys[ys.length - 1], top = 1.04, bot = Math.min(.5, end - .06), padB = 20, padR = 8;
+    const X = f => f * (w - padR), Y = v => 6 + (top - v) / (top - bot) * (h - padB - 6);
+    g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1;
+    for (let k = 0; k <= 4; k++) { const y = Math.round(6 + k * (h - padB - 6) / 4) + .5; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    g.setLineDash([3, 4]); g.strokeStyle = 'rgba(255,255,255,.28)'; g.beginPath(); g.moveTo(0, Y(1)); g.lineTo(w, Y(1)); g.stroke(); g.setLineDash([]);
+    g.font = '500 10px JBM, ui-monospace, monospace'; g.fillStyle = 'rgba(255,255,255,.38)';
+    g.fillText('price now', 4, Y(1) - 6); g.fillText('0', 0, h - 5); const lbl = this.pct.toFixed(1) + '% sold'; g.fillText(lbl, w - padR - g.measureText(lbl).width, h - 5);
+    const n = ys.length - 1, upto = Math.max(1, Math.round(clamp(prog) * n));
+    g.beginPath(); g.moveTo(X(0), Y(ys[0])); for (let i = 1; i <= upto; i++) g.lineTo(X(i / n), Y(ys[i]));
+    g.lineTo(X(upto / n), Y(1)); g.lineTo(X(0), Y(1)); g.closePath();
+    const grd = g.createLinearGradient(0, Y(1), 0, Y(end)); grd.addColorStop(0, drop ? 'rgba(255,122,122,0)' : 'rgba(110,242,166,.0)'); grd.addColorStop(1, drop ? 'rgba(255,122,122,.28)' : 'rgba(110,242,166,.12)');
+    g.fillStyle = grd; g.fill();
+    g.beginPath(); g.moveTo(X(0), Y(ys[0])); for (let i = 1; i <= upto; i++) g.lineTo(X(i / n), Y(ys[i]));
+    g.strokeStyle = drop ? '#ff8a8a' : '#f2f2ee'; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke();
+    const ex = X(upto / n), ey = Y(ys[upto]);
+    g.fillStyle = drop ? '#ff8a8a' : '#6ef2a6'; g.beginPath(); g.arc(ex, ey, 4, 0, 7); g.fill();
+    g.strokeStyle = drop ? 'rgba(255,138,138,.35)' : 'rgba(110,242,166,.35)'; g.beginPath(); g.arc(ex, ey, 9, 0, 7); g.stroke();
+  },
+  draw() {
+    if (!this.c) return;
+    const r = $('#lab-r'); r.style.setProperty('--p', ((this.pct - .1) / 9.9 * 100).toFixed(1) + '%');
+    $('#lab-pct').textContent = this.pct.toFixed(1) + '% of supply';
+    const ys = this.series(), p = this.prog, tokens = this.pct / 100 * PUMP_SUPPLY, mv = tokens * curvePrice(this.c.curve), d = dump(this.c.curve, tokens * clamp(p));
+    this.plot($('#lab-ca'), ys, p, true); this.plot($('#lab-cb'), ys.map(() => 1), p, false);
+    $('#lab-a').textContent = fmtPct(-d.chart);
+    $('#lab-af').innerHTML = `Holder gets <b>${fmtSol(d.sol)}</b> for ${fmtNum(tokens * clamp(p))} $${esc(this.c.symbol)}${p >= 1 ? ` · <span class="down">${fmtSol(mv - d.sol)}</span> lost to slippage` : ''}`;
+    $('#lab-bf').innerHTML = `Holder gets <b>your price</b> · market value ${fmtSol(mv * clamp(p))} · the chart never sees it`;
+  },
+  play() {
+    if (!this.c) return; cancelAnimationFrame(this.raf);
+    if (REDUCED) { this.prog = 1; this.draw(); return; }
+    const t0 = performance.now(), ms = 1300;
+    const step = now => { this.prog = Math.min(1, (now - t0) / ms); this.prog = 1 - Math.pow(1 - this.prog, 2); this.draw(); if (now - t0 < ms) this.raf = requestAnimationFrame(step); };
+    this.raf = requestAnimationFrame(step);
+  },
+};
+$('#lab-r').addEventListener('input', e => { lab.pct = +e.target.value; lab.prog = 1; cancelAnimationFrame(lab.raf); lab.draw(); });
+$('#lab-go').addEventListener('click', () => lab.play());
+$('#lab-pick').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; lab.c = lab.coins.find(c => c.mint === b.dataset.m) || lab.c; lab.pick(); lab.play(); });
+addEventListener('resize', () => lab.draw());
+new IntersectionObserver(([e]) => { if (e.isIntersecting && !lab.played && lab.c) { lab.played = true; setTimeout(() => lab.play(), 350); } }, { threshold: .4 }).observe($('.lab'));
+
+// buttons lean toward the cursor
+$$('.ctas .btn, .wal, #lab-go').forEach(b => {
+  b.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse' || REDUCED) return; const r = b.getBoundingClientRect(); b.style.transform = `translate(${(((e.clientX - r.left) / r.width) - .5) * 10}px, ${(((e.clientY - r.top) / r.height) - .5) * 8}px)`; });
+  b.addEventListener('pointerleave', () => { b.style.transform = ''; });
+});
 
 // ---------------------------------------------------------------- footer, routes, boot
 async function loadConfig() {
