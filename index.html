@@ -21,14 +21,14 @@
 <link rel="preload" href="/assets/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/jbm-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/oc.css?v=4">
+<link rel="stylesheet" href="/assets/css/oc.css?v=5">
 <noscript><style>#intro{display:none}html.intro-on .top,html.intro-on main{opacity:1}</style></noscript>
 </head>
 <body>
 <div id="intro"><div class="veil"></div></div>
 <canvas id="ascii" aria-hidden="true"></canvas>
 <header class="top">
-  <a class="logo" href="#top" aria-label="ONCHAIN home"><svg viewBox="5 19 54 26" width="34" height="16" aria-hidden="true"><g fill="none"><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><clipPath id="lc"><rect x="25" y="33" width="14" height="14"/></clipPath><g clip-path="url(#lc)"><rect x="27" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/></g></g></svg><span>ONCHAIN</span></a>
+  <a class="logo" href="#top" aria-label="onchain home"><svg viewBox="5 19 54 26" width="34" height="16" aria-hidden="true"><g fill="none"><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><clipPath id="lc"><rect x="25" y="33" width="14" height="14"/></clipPath><g clip-path="url(#lc)"><rect x="27" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/></g></g></svg><span>onchain</span></a>
   <nav class="nav" aria-label="Sections">
     <a href="#lab" data-s="lab">Try it</a><a href="#market" data-s="market">Market</a><a href="#lookup" data-s="lookup">Lookup</a><a href="#desk" data-s="desk">Desk</a><a href="#tape" data-s="tape">Tape</a><a href="#how" data-s="how">How it works</a>
   </nav>
@@ -39,8 +39,7 @@
   <section class="hero" id="hero">
     <div class="hero-in">
       <div class="hero-copy">
-        <p class="kick rv"><span class="dot"></span>Wallet to wallet · Solana</p>
-        <h1 class="rv"><span>Off the chart.</span><span>On chain.</span></h1>
+        <h1 class="rv wm">onchain</h1>
         <p class="lead rv">Make an offer on any memecoin bag. The holder signs, and both sides swap in one transaction. The pool never sees it, so the chart never moves.</p>
         <div class="ctas rv"><a class="btn solid" href="#market">Make an offer</a><a class="btn line" href="#lookup">Look up a wallet</a></div>
       </div>
@@ -105,7 +104,7 @@
   </section>
 
   <section class="sec" id="tape">
-    <div class="sec-h rv"><span class="kick">06 · The tape</span><h2>The chart never sees it. The tape does.</h2><p>Every offer, swap and cancel on ONCHAIN, as it happens.</p></div>
+    <div class="sec-h rv"><span class="kick">06 · The tape</span><h2>The chart never sees it. The tape does.</h2><p>Every offer, swap and cancel on onchain, as it happens.</p></div>
     <div class="stats rv" id="stats"></div>
     <div id="tape-out" class="rv"></div>
   </section>
@@ -113,21 +112,20 @@
   <section class="sec" id="faq">
     <div class="sec-h rv"><span class="kick">07 · Questions</span><h2>How the swap stays safe</h2></div>
     <div class="faq rv">
-      <details open><summary>Who holds my coins while an offer is open?</summary><p>You do. Your offer is a transaction your wallet signed in advance, waiting for the holder's signature. Your SOL and their tokens stay in each wallet until the swap. ONCHAIN holds no key that can move anything.</p></details>
-      <details><summary>What is the deposit slot?</summary><p>Each open offer rests on a small Solana "durable nonce" account. It lets your signed half stay valid for days instead of about a minute. It holds about 0.0015 SOL of rent, which goes back to your wallet when you cancel or reclaim it. Only your wallet controls it.</p></details>
+      <details open><summary>Who holds my coins while an offer is open?</summary><p>You do. Your offer is a transaction your wallet signed in advance, waiting for the holder's signature. Your SOL and their tokens stay in each wallet until the swap. onchain holds no key that can move anything.</p></details>
+      <details><summary>What is the deposit slot?</summary><p>Each open offer rests on a small Solana "durable nonce" account. It lets your signed half stay valid for days instead of about a minute. It holds about 0.001 SOL of rent, which goes back to your wallet when you cancel or reclaim it. Only your wallet controls it.</p></details>
       <details><summary>How do I cancel?</summary><p>Click cancel on your desk. Your wallet closes the deposit slot, which makes your signed half invalid forever, and the rent returns to you.</p></details>
       <details><summary>Why does it not move the chart?</summary><p>The tokens and SOL go straight from wallet to wallet in one transaction. Nothing is sold into the curve or the pool, so the price never sees it.</p></details>
       <details><summary>What if the holder sold first, or I spent my SOL?</summary><p>Then the swap fails as a whole and nothing moves. Both transfers happen together or not at all.</p></details>
-      <details><summary>What does ONCHAIN charge?</summary><p>Nothing. You pay Solana's network fee (fractions of a cent) and the refundable deposit.</p></details>
       <details><summary>Which coins work?</summary><p>Any SPL or Token-2022 coin on Solana, pump.fun or not. Coins with a transfer hook are not supported yet.</p></details>
       <details><summary>How does the holder find my offer?</summary><p>It shows on their desk the next time they connect, and you get a link to send them. Anyone can check the offer on its page.</p></details>
     </div>
   </section>
 
-  <footer class="foot"><span>ONCHAIN</span><span class="muted">Off the chart. On chain.</span><span id="foot-links"></span></footer>
+  <footer class="foot"><span>onchain</span><span id="foot-links"></span></footer>
 </main>
 
 <div id="toasts" aria-live="polite"></div>
-<script type="module" src="/assets/js/app.js?v=5"></script>
+<script type="module" src="/assets/js/app.js?v=6"></script>
 </body>
 </html>
