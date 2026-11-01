@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ONCHAIN</title>
+<title>onchain</title>
 <meta name="description" content="Trade any memecoin bag wallet to wallet. Make an offer, the holder signs, both sides swap in one transaction. Off the chart. On chain.">
 <meta name="theme-color" content="#000000">
 <meta property="og:type" content="website">
-<meta property="og:title" content="ONCHAIN">
+<meta property="og:title" content="onchain">
 <meta property="og:description" content="Off the chart. On chain. Make an offer on any memecoin bag; the holder signs; one transaction swaps both sides.">
 <meta property="og:image" content="/assets/img/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="ONCHAIN">
+<meta name="twitter:title" content="onchain">
 <meta name="twitter:description" content="Off the chart. On chain. Wallet-to-wallet trades for Solana memecoins.">
 <meta name="twitter:image" content="/assets/img/og.png">
-<link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
-<link rel="icon" type="image/png" sizes="64x64" href="/assets/img/favicon-64.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32.png">
-<link rel="apple-touch-icon" href="/assets/img/favicon-180.png">
+<link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg?v=2">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/img/favicon-64.png?v=2">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32.png?v=2">
+<link rel="apple-touch-icon" href="/assets/img/favicon-180.png?v=2">
 <link rel="preload" href="/assets/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/jbm-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/oc.css?v=3">
+<link rel="stylesheet" href="/assets/css/oc.css?v=4">
 <noscript><style>#intro{display:none}html.intro-on .top,html.intro-on main{opacity:1}</style></noscript>
 </head>
 <body>
@@ -30,7 +30,7 @@
 <header class="top">
   <a class="logo" href="#top" aria-label="ONCHAIN home"><svg viewBox="5 19 54 26" width="34" height="16" aria-hidden="true"><g fill="none"><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="8" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/><clipPath id="lc"><rect x="25" y="33" width="14" height="14"/></clipPath><g clip-path="url(#lc)"><rect x="27" y="22" width="29" height="20" rx="10" stroke="#000" stroke-width="9"/><rect x="27" y="22" width="29" height="20" rx="10" stroke="currentColor" stroke-width="4"/></g></g></svg><span>ONCHAIN</span></a>
   <nav class="nav" aria-label="Sections">
-    <a href="#market" data-s="market">Market</a><a href="#lookup" data-s="lookup">Lookup</a><a href="#desk" data-s="desk">Desk</a><a href="#tape" data-s="tape">Tape</a><a href="#how" data-s="how">How it works</a>
+    <a href="#lab" data-s="lab">Try it</a><a href="#market" data-s="market">Market</a><a href="#lookup" data-s="lookup">Lookup</a><a href="#desk" data-s="desk">Desk</a><a href="#tape" data-s="tape">Tape</a><a href="#how" data-s="how">How it works</a>
   </nav>
   <button class="wal" id="wal">Connect wallet</button>
 </header>
@@ -70,35 +70,48 @@
     </div>
   </section>
 
+  <section class="sec" id="lab">
+    <div class="sec-h rv"><span class="kick">02 · Try it</span><h2>Dump a bag. Watch the chart.</h2><p>Pick a live pump.fun coin and drag the slider. On the left the bag is sold into the curve. On the right it changes hands wallet to wallet.</p></div>
+    <div class="lab rv">
+      <div class="lab-top"><div class="lab-pick" id="lab-pick"><span class="muted">Loading live coins…</span></div><button class="btn sm solid" id="lab-go" type="button">Dump it</button></div>
+      <div class="lab-ctl"><span>Bag size</span><input type="range" id="lab-r" min="0.1" max="10" step="0.1" value="3" aria-label="Bag size as a share of supply"><b id="lab-pct">3.0% of supply</b></div>
+      <div class="lab-charts">
+        <div class="lc"><div class="lc-h"><span>Sold into the curve</span><b class="down" id="lab-a">—</b></div><canvas id="lab-ca" aria-hidden="true"></canvas><p class="lc-f" id="lab-af">&nbsp;</p></div>
+        <div class="lc"><div class="lc-h"><span>Swapped wallet to wallet</span><b class="up">0.00%</b></div><canvas id="lab-cb" aria-hidden="true"></canvas><p class="lc-f" id="lab-bf">&nbsp;</p></div>
+      </div>
+    </div>
+  </section>
+
   <section class="sec" id="market">
-    <div class="sec-h rv"><span class="kick">02 · Live on pump.fun</span><h2>Pick a coin. Bid on a bag.</h2><p>Live pump.fun coins with their curve and the cost of dumping into it. Open any coin to see who holds it and make them an offer.</p></div>
+    <div class="sec-h rv"><span class="kick">03 · Live from pump.fun</span><h2>Pick a coin. Bid on a bag.</h2><p>Live pump.fun coins, ranked as they trade, with the real cost of dumping into each curve. Open any coin to see who holds it and make them an offer.</p></div>
     <div class="mbar rv">
-      <div class="tabs" role="tablist"><button data-tab="live" class="on">Live now</button><button data-tab="active">Trading</button><button data-tab="new">New</button></div>
-      <label class="find"><span>⌕</span><input id="mint-in" placeholder="Paste any token address" spellcheck="false" autocomplete="off"></label>
+      <div class="tabs" role="tablist"><button data-tab="live" class="on">Trending</button><button data-tab="active">Organic</button><button data-tab="new">New</button></div>
+      <label class="find"><span>⌕</span><input id="mint-in" placeholder="Paste any token address or pump.fun link" spellcheck="false" autocomplete="off"><kbd>/</kbd></label>
+      <div class="sort" role="group" aria-label="Sort coins"><button data-sort="rank" class="on" type="button">Rank</button><button data-sort="mcap" type="button">Mcap</button><button data-sort="impact" type="button">Dump impact</button><button data-sort="age" type="button">Newest</button></div>
     </div>
     <div class="grid" id="coins"></div>
     <p class="src" id="coins-src"></p>
   </section>
 
   <section class="sec" id="lookup">
-    <div class="sec-h rv"><span class="kick">03 · Look up any wallet</span><h2>Every wallet is a shop.</h2><p>Paste a wallet and see every bag in it. Make an offer on the one you want.</p></div>
+    <div class="sec-h rv"><span class="kick">04 · Look up any wallet</span><h2>Every wallet is a shop.</h2><p>Paste a wallet and see every bag in it. Make an offer on the one you want.</p></div>
     <form class="look rv" id="look-f"><input id="look-in" placeholder="Paste a Solana wallet address" spellcheck="false" autocomplete="off"><button class="btn solid" type="submit">Look up</button></form>
     <div id="look-out"></div>
   </section>
 
   <section class="sec" id="desk">
-    <div class="sec-h rv"><span class="kick">04 · Your desk</span><h2>Offers in, offers out.</h2><p>Offers on your bags wait here for your signature. Your own offers stay open until they fill or you cancel them.</p></div>
+    <div class="sec-h rv"><span class="kick">05 · Your desk</span><h2>Offers in, offers out.</h2><p>Offers on your bags wait here for your signature. Your own offers stay open until they fill or you cancel them.</p></div>
     <div id="desk-out" class="rv"></div>
   </section>
 
   <section class="sec" id="tape">
-    <div class="sec-h rv"><span class="kick">05 · The tape</span><h2>The chart never sees it. The tape does.</h2><p>Every offer, swap and cancel on ONCHAIN, as it happens.</p></div>
+    <div class="sec-h rv"><span class="kick">06 · The tape</span><h2>The chart never sees it. The tape does.</h2><p>Every offer, swap and cancel on ONCHAIN, as it happens.</p></div>
     <div class="stats rv" id="stats"></div>
     <div id="tape-out" class="rv"></div>
   </section>
 
   <section class="sec" id="faq">
-    <div class="sec-h rv"><span class="kick">06 · Questions</span><h2>How the swap stays safe</h2></div>
+    <div class="sec-h rv"><span class="kick">07 · Questions</span><h2>How the swap stays safe</h2></div>
     <div class="faq rv">
       <details open><summary>Who holds my coins while an offer is open?</summary><p>You do. Your offer is a transaction your wallet signed in advance, waiting for the holder's signature. Your SOL and their tokens stay in each wallet until the swap. ONCHAIN holds no key that can move anything.</p></details>
       <details><summary>What is the deposit slot?</summary><p>Each open offer rests on a small Solana "durable nonce" account. It lets your signed half stay valid for days instead of about a minute. It holds about 0.0015 SOL of rent, which goes back to your wallet when you cancel or reclaim it. Only your wallet controls it.</p></details>
@@ -115,6 +128,6 @@
 </main>
 
 <div id="toasts" aria-live="polite"></div>
-<script type="module" src="/assets/js/app.js?v=3"></script>
+<script type="module" src="/assets/js/app.js?v=4"></script>
 </body>
 </html>
