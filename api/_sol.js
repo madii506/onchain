@@ -277,6 +277,16 @@ function pumpAccounts(mint) {
   const pool = PublicKey.findProgramAddressSync([Buffer.from('pool'), idx, auth.toBuffer(), m.toBuffer(), pk(WSOL).toBuffer()], pk(PUMPSWAP))[0];
   return { curve: curve.toBase58(), pool: pool.toBase58() };
 }
+// graduated pump.fun coins trade in their canonical PumpSwap pool: its token vault is the pool's associated account
+async function poolBases(list) {
+  const S = spl(), keys = [];
+  for (const x of list) { try { keys.push(S.getAssociatedTokenAddressSync(pk(x.mint), pk(pumpAccounts(x.mint).pool), true, pk(x.program || S.TOKEN_PROGRAM_ID.toBase58()))); } catch { keys.push(null); } }
+  const ok = keys.filter(Boolean); if (!ok.length) return {};
+  const accs = await rpc(c => c.getMultipleAccountsInfo(ok, 'confirmed')).catch(() => []);
+  const out = {}; let j = 0;
+  list.forEach((x, i) => { if (!keys[i]) return; const a = accs[j++]; if (a && a.data.length >= 72) { const v = Number(a.data.readBigUInt64LE(64)); if (v > 0) out[x.mint] = v; } });
+  return out;
+}
 // pump.fun curve reserves for price-impact maths (virtual token/SOL reserves, complete flag)
 async function curves(mints) {
   const { PublicKey } = w3();
@@ -291,4 +301,4 @@ async function curves(mints) {
   return out;
 }
 
-module.exports = { w3, spl, rpc, pk, isAddr, onCurve, SOL, WSOL, mintInfo, holdings, toRaw, fromRaw, toLamports, nonceRent, readNonce, readNonces, nonceCreateTx, nonceCloseTx, offerTx, simulate, simError, decode, signedBy, sameOffer, send, confirm, txStatus, nonceFate, solBalance, ataRent, bags, holders, pumpAccounts, curves, latest };
+module.exports = { w3, spl, rpc, pk, isAddr, onCurve, SOL, WSOL, mintInfo, holdings, toRaw, fromRaw, toLamports, nonceRent, readNonce, readNonces, nonceCreateTx, nonceCloseTx, offerTx, simulate, simError, decode, signedBy, sameOffer, send, confirm, txStatus, nonceFate, solBalance, ataRent, bags, holders, pumpAccounts, poolBases, curves, latest };

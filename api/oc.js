@@ -25,7 +25,7 @@ const jupCoin = t => ({
   mcapUsd: Number(t.mcap || t.fdv || 0), priceUsd: Number(t.usdPrice || 0), liquidityUsd: Number(t.liquidity || 0), holders: Number(t.holderCount || 0),
   created: Date.parse(t.createdAt || (t.firstPool && t.firstPool.createdAt) || '') || 0, complete: !!t.graduatedPool,
   change1h: t.stats1h && t.stats1h.priceChange != null ? Number(t.stats1h.priceChange) : null,
-  vol1h: t.stats1h ? Number(t.stats1h.buyVolume || 0) + Number(t.stats1h.sellVolume || 0) : 0, organic: Number(t.organicScore || 0),
+  vol1h: t.stats1h ? Number(t.stats1h.buyVolume || 0) + Number(t.stats1h.sellVolume || 0) : 0, organic: Number(t.organicScore || 0), program: t.tokenProgram || null,
 });
 async function pumpList(kind) {
   return L.cached('jl:' + kind, 20000, async () => {
@@ -61,10 +61,14 @@ function sane(cv, mcapUsd, sol) {
 async function coins(tab) {
   let list = [], src = 'jupiter';
   try { list = await pumpList(tab); } catch { try { list = await dexPump(); src = 'dexscreener'; } catch { list = []; } }
-  // live price-impact maths: bonding-curve reserves read straight from the chain
-  const onCurve = list.filter(c => !c.complete).slice(0, 40).map(c => c.mint);
-  const [cv, sol] = await Promise.all([onCurve.length ? C.curves(onCurve).catch(() => ({})) : {}, solUsd()]);
-  return { src, solUsd: sol, coins: list.map(c => { const k = cv[c.mint]; const ok = sane(k, c.mcapUsd, sol); return { ...c, complete: c.complete || !!(k && k.complete), curve: ok ? k : null }; }) };
+  // live price-impact maths straight from the chain: curve reserves while bonding, the PumpSwap pool after
+  const onCurve = list.filter(c => !c.complete).slice(0, 40).map(c => c.mint), grad = list.filter(c => c.complete).slice(0, 40);
+  const [cv, pools, sol] = await Promise.all([onCurve.length ? C.curves(onCurve).catch(() => ({})) : {}, grad.length ? C.poolBases(grad).catch(() => ({})) : {}, solUsd()]);
+  return { src, solUsd: sol, coins: list.map(c => {
+    const k = cv[c.mint], ok = sane(k, c.mcapUsd, sol), out = { ...c, complete: c.complete || !!(k && k.complete), curve: ok ? k : null, pool: pools[c.mint] ? { base: pools[c.mint] } : null };
+    if (!out.mcapUsd && ok && sol) { out.priceUsd = (k.vSol / 1e9) / (k.vTok / 1e6) * sol; out.mcapUsd = out.priceUsd * 1e9; }
+    return out;
+  }) };
 }
 async function jupTokens(mints) {
   const out = {};
@@ -81,13 +85,14 @@ async function tokenInfo(mint) {
     const pump = !!(jup && jup.launchpad === 'pump.fun') || /pump$/.test(mint);
     const raw = pump && !(jup && jup.graduated) ? (await C.curves([mint]).catch(() => ({})))[mint] || null : null;
     const cv = sane(raw, jup && jup.mcapUsd, sol) ? raw : null;
+    const pool = pump && jup && jup.graduated ? ((await C.poolBases([{ mint, program: info.program }]).catch(() => ({})))[mint] || 0) : 0;
     let priceUsd = jup && jup.priceUsd || 0;
     if (!priceUsd && cv && sol) priceUsd = (cv.vSol / 1e9) / (cv.vTok / 10 ** info.decimals) * sol;
     return {
       mint, decimals: info.decimals, program: info.program, supply: Number(info.supply) / 10 ** info.decimals, hook: info.hook,
       name: (jup && jup.name) || 'Unknown token', symbol: (jup && jup.symbol) || '???', image: (jup && jup.image) || '', priceUsd,
       mcapUsd: (jup && jup.mcapUsd) || (cv && sol ? (cv.vSol / 1e9) / (cv.vTok / 1e6) * 1e9 * sol : 0), liquidityUsd: (jup && jup.liquidityUsd) || 0,
-      holders: (jup && jup.holders) || 0, complete: pump ? !!((jup && jup.graduated) || (raw && raw.complete)) : null, curve: cv, pump, solUsd: sol,
+      holders: (jup && jup.holders) || 0, complete: pump ? !!((jup && jup.graduated) || (raw && raw.complete)) : null, curve: cv, pool: pool ? { base: pool } : null, pump, solUsd: sol,
     };
   });
 }
