@@ -128,7 +128,7 @@ async function offerTx({ id, buyer, seller, mint, amountRaw, lamports, nonce, no
   const { Transaction, SystemProgram, ComputeBudgetProgram, TransactionInstruction } = w3();
   const S = spl();
   const info = await mintInfo(mint), prog = pk(info.program);
-  if (info.hook) throw L.err(400, 'This token runs a transfer hook, which ONCHAIN does not support yet.');
+  if (info.hook) throw L.err(400, 'This token runs a transfer hook, which onchain does not support yet.');
   const b = pk(buyer), s = pk(seller), m = pk(mint);
   const held = await holdings(seller, mint, info.program);
   const src = held.find(h => h.raw >= amountRaw);
@@ -250,21 +250,31 @@ async function bags(owner) {
   }
   return [...by.values()].map(x => ({ mint: x.mint, decimals: x.decimals, raw: x.raw.toString(), ui: fromRaw(x.raw, x.decimals) }));
 }
-// the biggest real wallets holding a token: pools, curves and other program accounts are left out (they are PDAs)
+// the biggest holders of a token. Public RPCs refuse the indexed largest-accounts call, so the list comes from
+// Jupiter's holder index first, RugCheck next, and an RPC (when one with a key is set) last.
+function kindOf(owner, mint, tags) {
+  const pda = pumpAccounts(mint), t = (tags || []).map(x => `${x.id || ''} ${x.name || ''}`).join(' ');
+  if (owner === pda.curve) return 'curve';
+  if (owner === pda.pool || /pool|amm|liquidity/i.test(t)) return 'pool';
+  if (/cex|exchange/i.test(t)) return 'exchange';
+  return onCurve(owner) ? 'wallet' : 'program';
+}
 async function holders(mint) {
   return L.cached('holders:' + mint, 45000, async () => {
-    const info = await mintInfo(mint);
+    const info = await mintInfo(mint), supply = Number(info.supply) / 10 ** info.decimals;
+    const row = (owner, ui, tags) => { const kind = kindOf(owner, mint, tags); const label = (tags || []).map(x => x.name || x.id).filter(Boolean)[0] || null; return { owner, ui, pct: supply ? ui / supply : 0, wallet: kind === 'wallet', kind, label }; };
+    const j = await L.getJson('https://datapi.jup.ag/v1/holders/' + mint, {}, 7000).catch(() => null);
+    if (j && j.ok && j.json && Array.isArray(j.json.holders) && j.json.holders.length)
+      return { decimals: info.decimals, supply, count: Number(j.json.count || 0), src: 'jupiter', rows: j.json.holders.slice(0, 40).map(h => row(h.address, Number(h.amount) || 0, h.tags)) };
+    const rc = await L.getJson(`https://api.rugcheck.xyz/v1/tokens/${mint}/report`, {}, 8000).catch(() => null);
+    if (rc && rc.ok && rc.json && Array.isArray(rc.json.topHolders) && rc.json.topHolders.length)
+      return { decimals: info.decimals, supply, count: Number(rc.json.totalHolders || 0), src: 'rugcheck', rows: rc.json.topHolders.slice(0, 20).map(h => row(h.owner || h.address, Number(h.uiAmount) || 0, h.insider ? [{ name: 'insider' }] : [])) };
     const big = await rpc(c => c.getTokenLargestAccounts(pk(mint), 'confirmed'));
     const accts = (big.value || []).filter(x => x.uiAmount > 0).slice(0, 20);
     const parsed = await rpc(c => c.getMultipleParsedAccounts(accts.map(x => x.address), { commitment: 'confirmed' }));
-    const supply = Number(info.supply) / 10 ** info.decimals;
     const rows = [];
-    accts.forEach((x, i) => {
-      const p = parsed.value[i]; const owner = p && p.data && p.data.parsed && p.data.parsed.info && p.data.parsed.info.owner;
-      if (!owner) return;
-      rows.push({ owner, account: x.address.toBase58(), ui: x.uiAmount, pct: supply ? x.uiAmount / supply : 0, wallet: onCurve(owner) });
-    });
-    return { decimals: info.decimals, supply, rows };
+    accts.forEach((x, i) => { const p = parsed.value[i], owner = p && p.data && p.data.parsed && p.data.parsed.info && p.data.parsed.info.owner; if (owner) rows.push(row(owner, x.uiAmount, [])); });
+    return { decimals: info.decimals, supply, count: 0, src: 'rpc', rows };
   });
 }
 // the pump.fun accounts that hold a coin's supply: its bonding curve and, once graduated, its canonical PumpSwap pool

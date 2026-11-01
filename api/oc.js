@@ -5,7 +5,7 @@ const L = require('./_lib');
 const C = require('./_sol');
 
 const JUP = 'https://lite-api.jup.ag';
-const FEE_BPS = 0;                                     // ONCHAIN takes nothing
+const FEE_BPS = 0;                                     // onchain takes nothing
 
 // ---------- market data ----------
 async function solUsd() {
@@ -168,8 +168,7 @@ module.exports = async (req, res) => {
     }
     if (op === 'holders') {
       const mint = String(L.one(qs.mint) || ''); if (!C.isAddr(mint)) throw L.err(400, 'That is not a token address.');
-      const h = await C.holders(mint), pda = C.pumpAccounts(mint);
-      return L.send(res, 200, { ok: true, ...h, rows: h.rows.map(r => ({ ...r, kind: r.wallet ? 'wallet' : r.owner === pda.curve ? 'curve' : r.owner === pda.pool ? 'pool' : 'program' })) }, L.CACHE(30));
+      return L.send(res, 200, { ok: true, ...(await C.holders(mint)) }, L.CACHE(30));
     }
     if (op === 'bags') {
       const w = String(L.one(qs.wallet) || '').trim(); if (!C.isAddr(w)) throw L.err(400, 'That is not a Solana wallet address.');
@@ -185,7 +184,7 @@ module.exports = async (req, res) => {
       for (const [k, v] of [['buyer', buyer], ['holder', seller], ['token', mint]]) if (!C.isAddr(v)) throw L.err(400, `The ${k} address is missing or wrong.`);
       if (buyer === seller) throw L.err(400, 'You cannot make an offer to yourself.');
       const info = await C.mintInfo(mint);
-      if (info.hook) throw L.err(400, 'This token runs a transfer hook, which ONCHAIN does not support yet.');
+      if (info.hook) throw L.err(400, 'This token runs a transfer hook, which onchain does not support yet.');
       const amountRaw = C.toRaw(L.one(qs.amount) || '0', info.decimals), lamports = C.toLamports(L.one(qs.sol) || '0');
       if (amountRaw <= 0n) throw L.err(400, 'Enter how many tokens you want.');
       if (lamports < 100000n) throw L.err(400, 'Offer at least 0.0001 SOL.');
