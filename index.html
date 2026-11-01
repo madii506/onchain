@@ -71,12 +71,12 @@
   </section>
 
   <section class="sec" id="lab">
-    <div class="sec-h rv"><span class="kick">02 · Try it</span><h2>Dump a bag. Watch the chart.</h2><p>Pick a live pump.fun coin and drag the slider. On the left the bag is sold into the curve. On the right it changes hands wallet to wallet.</p></div>
+    <div class="sec-h rv"><span class="kick">02 · Try it</span><h2>Dump a bag. Watch the chart.</h2><p>Pick a live pump.fun coin and drag the slider. On the left the bag is sold into its curve or pool. On the right it changes hands wallet to wallet.</p></div>
     <div class="lab rv">
       <div class="lab-top"><div class="lab-pick" id="lab-pick"><span class="muted">Loading live coins…</span></div><button class="btn sm solid" id="lab-go" type="button">Dump it</button></div>
       <div class="lab-ctl"><span>Bag size</span><input type="range" id="lab-r" min="0.1" max="10" step="0.1" value="3" aria-label="Bag size as a share of supply"><b id="lab-pct">3.0% of supply</b></div>
       <div class="lab-charts">
-        <div class="lc"><div class="lc-h"><span>Sold into the curve</span><b class="down" id="lab-a">—</b></div><canvas id="lab-ca" aria-hidden="true"></canvas><p class="lc-f" id="lab-af">&nbsp;</p></div>
+        <div class="lc"><div class="lc-h"><span id="lab-al">Sold into the curve</span><b class="down" id="lab-a">—</b></div><canvas id="lab-ca" aria-hidden="true"></canvas><p class="lc-f" id="lab-af">&nbsp;</p></div>
         <div class="lc"><div class="lc-h"><span>Swapped wallet to wallet</span><b class="up">0.00%</b></div><canvas id="lab-cb" aria-hidden="true"></canvas><p class="lc-f" id="lab-bf">&nbsp;</p></div>
       </div>
     </div>
@@ -128,6 +128,6 @@
 </main>
 
 <div id="toasts" aria-live="polite"></div>
-<script type="module" src="/assets/js/app.js?v=4"></script>
+<script type="module" src="/assets/js/app.js?v=5"></script>
 </body>
 </html>
