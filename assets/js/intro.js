@@ -32,7 +32,7 @@ export async function playIntro() {
   return new Promise(resolve => {
     let done = false, raf = 0, z = 12, t0 = 0, filled = false;
     const g = ch.group;
-    const place = () => { ch.resize(); z = ch.fit(4.15, 1.2, innerWidth < 700 ? .74 : .42); };
+    const place = () => { ch.resize(); z = ch.fit(4.15, 1.2, innerWidth < 700 ? .58 : .32); };
     const finish = () => {
       if (done) return; done = true;
       el.classList.add('out'); resolve();

@@ -2,7 +2,7 @@
 // comes from the API (pump.fun, Jupiter and the Solana chain); nothing here is simulated.
 import { startAscii } from './ascii.js?v=3';
 import * as W from './wallet.js?v=3';
-import { wantIntro, playIntro, dropIntro } from './intro.js?v=4';
+import { wantIntro, playIntro, dropIntro } from './intro.js?v=5';
 
 // ---------------------------------------------------------------- helpers
 const $ = (s, r = document) => r.querySelector(s);
@@ -186,7 +186,7 @@ async function hero() {
   const cv = $('#hero-chain'); if (!cv) return;
   let ch; try { const m = await import('./chain3d.js?v=3'); ch = m.createChain(cv, { links: 3, line: 2.1, hatch: 1.05 }); } catch { return; }
   const g = ch.group; let vis = true, raf = 0, px = 0, py = 0, tx = 0, ty = 0, spin = .4, lastY = scrollY, vel = 0, flick = 0, drag = null;
-  const fit = () => { ch.resize(); ch.cam.position.z = ch.fit(4.25, 2.7, innerWidth < 980 ? .9 : .84); };
+  const fit = () => { ch.resize(); ch.cam.position.z = ch.fit(4.25, 2.7, innerWidth < 980 ? .72 : .66); };
   fit(); addEventListener('resize', fit);
   addEventListener('pointermove', e => { tx = e.clientX / innerWidth * 2 - 1; ty = e.clientY / innerHeight * 2 - 1; }, { passive: true });
   // grab it: drag sideways to wind the chain, tap it for a flick
